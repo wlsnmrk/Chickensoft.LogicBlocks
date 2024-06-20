@@ -22,6 +22,12 @@ public readonly ref struct IndentationAwareInterpolationHandler {
   private readonly StringBuilder _sb;
   private readonly State _state = new();
 
+  // HACK: InterpolatedStringHandlerArgumentAttribute is marked internal in .NET Standard 2.0,
+  // so we can't pass this as an argument to the ctor, and it won't be in place when building
+  // from a string literal.
+  // Therefore, we make it a static we can set it as needed before construction.
+  public static string EndOfLine = Environment.NewLine;
+
   public IndentationAwareInterpolationHandler(
     int literalLength, int formattedCount
   ) {
@@ -47,8 +53,8 @@ public readonly ref struct IndentationAwareInterpolationHandler {
   }
 
   private void AddString(string s) {
-    var value = s.NormalizeLineEndings();
-    var lastNewLineIndex = value.LastIndexOf('\n');
+    var value = s.NormalizeLineEndings(EndOfLine);
+    var lastNewLineIndex = value.LastIndexOf(EndOfLine);
     var remainingString = value.Substring(lastNewLineIndex + 1);
     var remainingNonWs = remainingString.TrimEnd();
     _state.EndedOnWhitespace = remainingNonWs.Length == 0;
@@ -64,7 +70,7 @@ public readonly ref struct IndentationAwareInterpolationHandler {
     // indent added by the line.
     var prefix = _state.Prefix;
     var value = string.Join(
-      Environment.NewLine,
+      EndOfLine,
       lines.Take(1).Concat(lines.Skip(1).Select((line) => prefix + line))
     );
     if (string.IsNullOrEmpty(value)) {

@@ -1,5 +1,6 @@
 namespace Chickensoft.LogicBlocks.DiagramGenerator.Models;
 
 public record GenerationOptions(
-  bool LogicBlocksDiagramGeneratorDisabled
+  bool LogicBlocksDiagramGeneratorDisabled,
+  string EndOfLine
 );

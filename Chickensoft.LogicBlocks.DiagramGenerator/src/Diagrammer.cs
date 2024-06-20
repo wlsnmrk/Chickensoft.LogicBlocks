@@ -61,15 +61,47 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
     // System.Diagnostics.Debugger.Break();
     // --------------------------------------------------------------------- //
 
-    var options = context.AnalyzerConfigOptionsProvider
+    // GlobalOptions doesn't contain .editorconfig values - only certain SyntaxTree options do, so look in all of them
+    var eolConfigValues = context.SyntaxProvider.CreateSyntaxProvider(
+        predicate: (node, _) => true,
+        transform: (context, _) => context.Node)
+      .Combine(context.AnalyzerConfigOptionsProvider)
+      .Select((nodeWithOptions, _) => {
+        nodeWithOptions.Right.GetOptions(nodeWithOptions.Left.SyntaxTree).TryGetValue("end_of_line", out var eolValue);
+        return eolValue;
+      })
+      .Collect();
 
-      .Select((options, _) => {
+    var options = context.AnalyzerConfigOptionsProvider
+      .Combine(eolConfigValues)
+      .Select((optionTreeTuple, _) => {
+        var options = optionTreeTuple.Left;
+        var eolConfigValues = optionTreeTuple.Right;
         var disabled = options.GlobalOptions.TryGetValue(
-          $"build_property.{Constants.DISABLE_CSPROJ_PROP}", out var value
-        ) && value.ToLower() is "true";
+          $"build_property.{Constants.DISABLE_CSPROJ_PROP}", out var disabledValue
+        ) && disabledValue.ToLower() is "true";
+
+        var eol = Environment.NewLine;
+        var eolConfigValue = eolConfigValues.FirstOrDefault(s => s is not null);
+        if (!string.IsNullOrEmpty(eolConfigValue)) {
+          switch (eolConfigValue) {
+            case "cr":
+              eol = "\r";
+              break;
+            case "lf":
+              eol = "\n";
+              break;
+            case "crlf":
+              eol = "\r\n";
+              break;
+            default:
+              break;
+          }
+        }
 
         return new GenerationOptions(
-          LogicBlocksDiagramGeneratorDisabled: disabled
+          LogicBlocksDiagramGeneratorDisabled: disabled,
+          EndOfLine: eol
         );
       });
 
@@ -84,12 +116,15 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
     .Where(logicBlockImplementation => logicBlockImplementation is not null)
     .Combine(options)
     .Select(
-      (value, token) => new GenerationData(
-        Options: value.Right,
-        Result: ConvertStateGraphToUml(
-          value.Right, value.Left!, token
-        )
-      )
+      (value, token) => {
+        IndentationAwareInterpolationHandler.EndOfLine = value.Right.EndOfLine;
+        return new GenerationData(
+          Options: value.Right,
+          Result: ConvertStateGraphToUml(
+            value.Right, value.Left!, token
+          )
+        );
+      }
     );
 
     context.RegisterImplementationSourceOutput(
@@ -123,7 +158,7 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
           context.AddSource(
             hintName: $"{result.Name}.puml.g.cs",
             source: string.Join(
-              "\n", result.Content.Split('\n').Select(line => $"// {line}")
+              data.Options.EndOfLine, result.Content.Split(new string[] { data.Options.EndOfLine }, StringSplitOptions.None).Select(line => $"// {line}")
             )
           );
         }
@@ -144,7 +179,7 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
     //   (ctx, _) => {
     //     if (_logsFlushed) { return; }
     //     ctx.AddSource(
-    //       "LOG", SourceText.From(Log.Contents, Encoding.UTF8)
+    //       "LOG", Microsoft.CodeAnalysis.Text.SourceText.From(Log.Contents, Encoding.UTF8)
     //     );
     //     _logsFlushed = true;
     //   }

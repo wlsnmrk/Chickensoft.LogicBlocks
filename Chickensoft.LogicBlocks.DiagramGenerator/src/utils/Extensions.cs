@@ -33,7 +33,7 @@ public static class Extensions {
   /// <returns>Cleaned string.</returns>
   public static string Clean(this string text, string? newLine = null) {
     newLine ??= Environment.NewLine;
-    var value = text.NormalizeLineEndings();
+    var value = text.NormalizeLineEndings(newLine);
 
     var lines = value.Split(new[] { newLine }, StringSplitOptions.None);
     for (var i = 0; i < lines.Length; i++) {
