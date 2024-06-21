@@ -27,7 +27,7 @@ public abstract class ChickensoftGenerator {
   /// <param name="code">Code to format.</param>
   /// <returns>"Formatted" code.</returns>
   public static string Format(IndentationAwareInterpolationHandler code)
-    => code.GetFormattedText().Clean(IndentationAwareInterpolationHandler.EndOfLine);
+    => code.GetFormattedText().Clean(IndentationAwareInterpolationHandler.NewLine);
 
   /// <summary>
   /// Returns the given <paramref name="lines" /> of code if

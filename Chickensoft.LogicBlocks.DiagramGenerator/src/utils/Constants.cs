@@ -8,6 +8,7 @@ public class Constants {
   public static int SPACES_PER_INDENT = 2;
 
   public const string DISABLE_CSPROJ_PROP = "LogicBlocksDiagramGeneratorDisabled";
+  public const string PUML_NEWLINE_OPTION = "puml_newline";
   public const string LOGIC_BLOCK_GET_INITIAL_STATE = "GetInitialState";
   public const string LOGIC_BLOCK_STATE_OUTPUT = "Output";
   public const string LOGIC_BLOCK_STATE_LOGIC_ON_ENTER = "OnEnter";

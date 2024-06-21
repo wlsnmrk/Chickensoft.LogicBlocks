@@ -61,47 +61,19 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
     // System.Diagnostics.Debugger.Break();
     // --------------------------------------------------------------------- //
 
-    // GlobalOptions doesn't contain .editorconfig values - only certain SyntaxTree options do, so look in all of them
-    var eolConfigValues = context.SyntaxProvider.CreateSyntaxProvider(
-        predicate: (node, _) => true,
-        transform: (context, _) => context.Node)
-      .Combine(context.AnalyzerConfigOptionsProvider)
-      .Select((nodeWithOptions, _) => {
-        nodeWithOptions.Right.GetOptions(nodeWithOptions.Left.SyntaxTree).TryGetValue("end_of_line", out var eolValue);
-        return eolValue;
-      })
-      .Collect();
-
     var options = context.AnalyzerConfigOptionsProvider
-      .Combine(eolConfigValues)
-      .Select((optionTreeTuple, _) => {
-        var options = optionTreeTuple.Left;
-        var eolConfigValues = optionTreeTuple.Right;
+
+      .Select((options, _) => {
         var disabled = options.GlobalOptions.TryGetValue(
           $"build_property.{Constants.DISABLE_CSPROJ_PROP}", out var disabledValue
         ) && disabledValue.ToLower() is "true";
 
-        var eol = Environment.NewLine;
-        var eolConfigValue = eolConfigValues.FirstOrDefault(s => s is not null);
-        if (!string.IsNullOrEmpty(eolConfigValue)) {
-          switch (eolConfigValue) {
-            case "cr":
-              eol = "\r";
-              break;
-            case "lf":
-              eol = "\n";
-              break;
-            case "crlf":
-              eol = "\r\n";
-              break;
-            default:
-              break;
-          }
-        }
+        options.GlobalOptions.TryGetValue(Constants.PUML_NEWLINE_OPTION, out var newLineValue);
+        var newLine = NewLineFromConfigValue(newLineValue) ?? Environment.NewLine;
 
         return new GenerationOptions(
           LogicBlocksDiagramGeneratorDisabled: disabled,
-          EndOfLine: eol
+          NewLine: newLine
         );
       });
 
@@ -117,7 +89,7 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
     .Combine(options)
     .Select(
       (value, token) => {
-        IndentationAwareInterpolationHandler.EndOfLine = value.Right.EndOfLine;
+        IndentationAwareInterpolationHandler.NewLine = value.Right.NewLine;
         return new GenerationData(
           Options: value.Right,
           Result: ConvertStateGraphToUml(
@@ -158,7 +130,7 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
           context.AddSource(
             hintName: $"{result.Name}.puml.g.cs",
             source: string.Join(
-              data.Options.EndOfLine, result.Content.Split(new string[] { data.Options.EndOfLine }, StringSplitOptions.None).Select(line => $"// {line}")
+              data.Options.NewLine, result.Content.Split(new string[] { data.Options.NewLine }, StringSplitOptions.None).Select(line => $"// {line}")
             )
           );
         }
@@ -179,14 +151,25 @@ public class Diagrammer : ChickensoftGenerator, IIncrementalGenerator {
     //   (ctx, _) => {
     //     if (_logsFlushed) { return; }
     //     ctx.AddSource(
-    //       "LOG", Microsoft.CodeAnalysis.Text.SourceText.From(Log.Contents, Encoding.UTF8)
-    //     );
+    //        "LOG", Microsoft.CodeAnalysis.Text.SourceText.From(Log.Contents, Encoding.UTF8)
+    //      );
     //     _logsFlushed = true;
     //   }
     // );
     // --------------------------------------------------------------------- //
   }
 
+  public static string? NewLineFromConfigValue(string? newLineValue) {
+    if (newLineValue is null) {
+      return null;
+    }
+    return newLineValue.ToLower() switch {
+      "cr" => "\r",
+      "lf" => "\n",
+      "crlf" => "\r\n",
+      _ => null,
+    };
+  }
   public static bool IsLogicBlockCandidate(SyntaxNode node) =>
     node is ClassDeclarationSyntax classDeclaration &&
     classDeclaration.AttributeLists.SelectMany(list => list.Attributes)
