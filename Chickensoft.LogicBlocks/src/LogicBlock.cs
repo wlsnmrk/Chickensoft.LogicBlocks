@@ -99,6 +99,13 @@ public interface ILogicBlock :
   void Stop();
 
   /// <summary>
+  /// Callback invoked immediately before the logic block is started for the
+  /// first time. This is a great place to add data to the blackboard that may
+  /// not have been available in the constructor.
+  /// </summary>
+  void OnInitialize();
+
+  /// <summary>
   /// Callback invoked when the logic block is started. This is a great place to
   /// setup listeners for any reactive dependencies provided on the blackboard.
   /// </summary>
@@ -149,6 +156,7 @@ public abstract partial class LogicBlock : ILogicBlock,
   internal LogicBlockState? _state;
   internal History? _history;
   private List<IDisposable>? _disposables = [];
+  private bool _hasStartedOnce;
 
   public History History => _history ??=
     new History(maxCapacity: _maxHistoryCapacity);
@@ -228,6 +236,9 @@ public abstract partial class LogicBlock : ILogicBlock,
   // defer stop until after current operations, otherwise stop right away
   public void Stop() => _subject.Perform(new StopOp());
 
+  /// <inheritdoc/>
+  public virtual void OnInitialize() { }
+
   public virtual void OnStart() { }
 
   public virtual IEnumerable<IDisposable> OnStartSubscriptions()
@@ -303,6 +314,13 @@ public abstract partial class LogicBlock : ILogicBlock,
 
   void IPerform<StartOp>.Perform(in StartOp op)
   {
+    // run user initialization code if this is the first start
+    if (!_hasStartedOnce)
+    {
+      _hasStartedOnce = true;
+      OnInitialize();
+    }
+
     // run the second half of a state change sequence since there's no state to exit
     var state = _state!;
     ChangeState(state, null);

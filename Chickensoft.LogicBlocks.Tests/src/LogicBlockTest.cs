@@ -122,13 +122,33 @@ public sealed class LogicBlockStartAndStopTest
   [Fact]
   public void StartsAndStopsAndCallsLifecycleMethods()
   {
-    using var logic = new LightSwitchLogic();
+    using var logic = new TestLogicBlock();
+    var state = new TestLogicBlockState();
+    logic.Set(state);
 
-    logic.Start<LightSwitchState.PoweredOff>();
-    logic.StartCalled.ShouldBeTrue();
+    var initializeCalled = false;
+    var startCalled = false;
+    var stopCalled = false;
 
+    logic.OnInitializeAction = () => initializeCalled = true;
+    logic.OnStartAction = () => startCalled = true;
+    logic.OnStopAction = () => stopCalled = true;
+
+    logic.Start<TestLogicBlockState>();
+    initializeCalled.ShouldBeTrue();
+    startCalled.ShouldBeTrue();
     logic.Stop();
-    logic.StopCalled.ShouldBeTrue();
+    stopCalled.ShouldBeTrue();
+
+    initializeCalled = false;
+    startCalled = false;
+    stopCalled = false;
+
+    logic.Start<TestLogicBlockState>();
+    initializeCalled.ShouldBeFalse(); // already started once
+    startCalled.ShouldBeTrue();
+    logic.Stop();
+    stopCalled.ShouldBeTrue();
   }
 
   [Fact]
