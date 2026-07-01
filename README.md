@@ -207,8 +207,15 @@ public partial class MyLogic : AutoBlock
     Preallocate<MyState>(); // discover and preallocate all concrete states
   }
 
-  public override ILogicBlockSaveData GetSaveData(LogicBlockData data) =>
+  public override ILogicBlockSaveData Serialize(LogicBlockData data) =>
     new MySaveData { Data = data };
+
+  [Meta, Id(“my_save_data”)]
+  public class MySaveData : ILogicBlockSaveData 
+  {
+    [Save("data")]
+    public LogicBlockData Data { get; set; }
+  }
 }
 ```
 
