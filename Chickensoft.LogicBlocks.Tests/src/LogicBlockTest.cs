@@ -120,28 +120,45 @@ public sealed class LogicBlockStartAndStopTest
   }
 
   [Fact]
-  public void StartsAndStopsAndCallsLifecycleMethods()
+  public void StartsAndStopsAndCallsLifecycleMethodsInCorrectOrder()
   {
     using var logic = new TestLogicBlock();
     var state = new TestLogicBlockState();
     logic.Set(state);
 
     var initializeCalled = false;
+    var stateEntered = false;
+    var stateEnteredAfterInitialize = false;
     var startCalled = false;
+    var startCalledAfterStateEntered = false;
     var stopCalled = false;
 
     logic.OnInitializeAction = () => initializeCalled = true;
-    logic.OnStartAction = () => startCalled = true;
+    state.OnEnterAction = () =>
+    {
+      stateEntered = true;
+      stateEnteredAfterInitialize = initializeCalled;
+    };
+    logic.OnStartAction = () =>
+    {
+      startCalled = true;
+      startCalledAfterStateEntered = stateEntered;
+    };
     logic.OnStopAction = () => stopCalled = true;
 
     logic.Start<TestLogicBlockState>();
     initializeCalled.ShouldBeTrue();
+    stateEnteredAfterInitialize.ShouldBeTrue();
     startCalled.ShouldBeTrue();
+    startCalledAfterStateEntered.ShouldBeTrue();
     logic.Stop();
     stopCalled.ShouldBeTrue();
 
     initializeCalled = false;
+    stateEntered = false;
+    stateEnteredAfterInitialize = false;
     startCalled = false;
+    startCalledAfterStateEntered = false;
     stopCalled = false;
 
     logic.Start<TestLogicBlockState>();
