@@ -66,6 +66,7 @@ public class TestLogicBlockWithInitialState : LogicBlock
 
 public class TestLogicBlock : LogicBlock
 {
+  public Action OnInitializeAction { get; set; } = () => { };
   public Action OnStartAction { get; set; } = () => { };
   public Action OnStopAction { get; set; } = () => { };
 
@@ -80,6 +81,7 @@ public class TestLogicBlock : LogicBlock
   {
   }
 
+  public override void OnInitialize() => OnInitializeAction();
   public override void OnStart() => OnStartAction();
   public override void OnStop() => OnStopAction();
 }
